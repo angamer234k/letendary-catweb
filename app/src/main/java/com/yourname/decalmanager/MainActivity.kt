@@ -93,9 +93,10 @@ class MainViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(statusMessage = msg)
     }
 
-    fun loadFromAssetId(assetId: String) {
+    fun loadFromAssetId(assetId: String, context: Context) {
         if (assetId.isBlank()) { setStatus("Enter an Asset ID"); return }
         _uiState.value = _uiState.value.copy(isLoading = true)
+        // Use viewModelScope from ViewModel
         viewModelScope.launch {
             try {
                 val response = RetrofitClient.publicApi.getAssetDetails(assetId)
@@ -108,7 +109,7 @@ class MainViewModel : ViewModel() {
                     statusMessage = "Loaded ${entryList.size} entries from asset $assetId",
                     isLoading = false
                 )
-                LocalContext.current.dataStore.edit { prefs ->
+                context.dataStore.edit { prefs ->
                     prefs[DECAL_ID_KEY] = assetId
                 }
             } catch (e: Exception) {
@@ -285,7 +286,7 @@ class MainActivity : ComponentActivity() {
                             enabled = !uiState.isLoading
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Button(onClick = { viewModel.loadFromAssetId(uiState.assetIdInput) }, enabled = !uiState.isLoading) {
+                        Button(onClick = { viewModel.loadFromAssetId(uiState.assetIdInput, context) }, enabled = !uiState.isLoading) {
                             Text("Load")
                         }
                     }
@@ -313,8 +314,11 @@ class MainActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { _uiState.value = _uiState.value.copy(showAddDialog = true) }) { Text("➕ Add") }
-                        Button(onClick = { _uiState.value = _uiState.value.copy(showDeleteQueryDialog = true) }) { Text("🗑️ Delete") }
+                        Button(onClick = { viewModel.setStatus("") }) { 
+                            // We'll use a separate state for dialogs via the ViewModel
+                        }
+                        Button(onClick = { viewModel._uiState.value = viewModel._uiState.value.copy(showAddDialog = true) }) { Text("➕ Add") }
+                        Button(onClick = { viewModel._uiState.value = viewModel._uiState.value.copy(showDeleteQueryDialog = true) }) { Text("🗑️ Delete") }
                         Button(onClick = { viewModel.copyToClipboard(context) }, enabled = uiState.entries.isNotEmpty()) {
                             Text("📋 Copy")
                         }
@@ -330,7 +334,7 @@ class MainActivity : ComponentActivity() {
                     var addUrl by remember { mutableStateOf("") }
                     var addDesc by remember { mutableStateOf("") }
                     AlertDialog(
-                        onDismissRequest = { _uiState.value = _uiState.value.copy(showAddDialog = false) },
+                        onDismissRequest = { viewModel._uiState.value = viewModel._uiState.value.copy(showAddDialog = false) },
                         title = { Text("Add Entry") },
                         text = {
                             Column {
@@ -369,7 +373,7 @@ class MainActivity : ComponentActivity() {
                             Button(onClick = { viewModel.addEntry(addName, addUrl, addDesc) }) { Text("Add") }
                         },
                         dismissButton = {
-                            Button(onClick = { _uiState.value = _uiState.value.copy(showAddDialog = false) }) { Text("Cancel") }
+                            Button(onClick = { viewModel._uiState.value = viewModel._uiState.value.copy(showAddDialog = false) }) { Text("Cancel") }
                         }
                     )
                 }
@@ -378,7 +382,7 @@ class MainActivity : ComponentActivity() {
                 if (uiState.showDeleteQueryDialog) {
                     var deleteQuery by remember { mutableStateOf("") }
                     AlertDialog(
-                        onDismissRequest = { _uiState.value = _uiState.value.copy(showDeleteQueryDialog = false) },
+                        onDismissRequest = { viewModel._uiState.value = viewModel._uiState.value.copy(showDeleteQueryDialog = false) },
                         title = { Text("Enter name or URL to delete") },
                         text = {
                             OutlinedTextField(
@@ -391,7 +395,7 @@ class MainActivity : ComponentActivity() {
                             Button(onClick = { viewModel.findAndShowDelete(deleteQuery) }) { Text("Find") }
                         },
                         dismissButton = {
-                            Button(onClick = { _uiState.value = _uiState.value.copy(showDeleteQueryDialog = false) }) { Text("Cancel") }
+                            Button(onClick = { viewModel._uiState.value = viewModel._uiState.value.copy(showDeleteQueryDialog = false) }) { Text("Cancel") }
                         }
                     )
                 }
@@ -399,7 +403,7 @@ class MainActivity : ComponentActivity() {
                 // Delete Found Dialog (Pagination)
                 if (uiState.showDeleteDialog) {
                     AlertDialog(
-                        onDismissRequest = { _uiState.value = _uiState.value.copy(showDeleteDialog = false) },
+                        onDismissRequest = { viewModel._uiState.value = viewModel._uiState.value.copy(showDeleteDialog = false) },
                         title = { Text("Found ${uiState.deleteFoundList.size} entries") },
                         text = {
                             Column {
@@ -421,7 +425,7 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         dismissButton = {
-                            Button(onClick = { _uiState.value = _uiState.value.copy(showDeleteDialog = false) }) { Text("Cancel") }
+                            Button(onClick = { viewModel._uiState.value = viewModel._uiState.value.copy(showDeleteDialog = false) }) { Text("Cancel") }
                         }
                     )
                 }
