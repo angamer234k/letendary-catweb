@@ -6,6 +6,7 @@ import android.content.Context
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -52,6 +53,7 @@ object RetrofitClient {
         Retrofit.Builder()
             .baseUrl("https://api.roblox.com/")
             .client(client)
+            .addInterceptor(logging)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(RobloxPublicApi::class.java)
@@ -93,10 +95,24 @@ class MainViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(statusMessage = msg)
     }
 
+    fun showAddDialog(show: Boolean) {
+        _uiState.value = _uiState.value.copy(showAddDialog = show)
+    }
+
+    fun showDeleteQueryDialog(show: Boolean) {
+        _uiState.value = _uiState.value.copy(showDeleteQueryDialog = show)
+    }
+
+    fun showDeleteDialog(show: Boolean) {
+        _uiState.value = _uiState.value.copy(showDeleteDialog = show)
+    }
+
     fun loadFromAssetId(assetId: String, context: Context) {
-        if (assetId.isBlank()) { setStatus("Enter an Asset ID"); return }
+        if (assetId.isBlank()) {
+            setStatus("Enter an Asset ID")
+            return
+        }
         _uiState.value = _uiState.value.copy(isLoading = true)
-        // Use viewModelScope from ViewModel
         viewModelScope.launch {
             try {
                 val response = RetrofitClient.publicApi.getAssetDetails(assetId)
@@ -122,7 +138,10 @@ class MainViewModel : ViewModel() {
     }
 
     fun importDescription(rawDesc: String) {
-        if (rawDesc.isBlank()) { setStatus("Description is empty"); return }
+        if (rawDesc.isBlank()) {
+            setStatus("Description is empty")
+            return
+        }
         entryList = parseDescription(rawDesc).toMutableList()
         updateLocalState()
         setStatus("Imported ${entryList.size} entries from clipboard")
@@ -153,7 +172,10 @@ class MainViewModel : ViewModel() {
     }
 
     fun findAndShowDelete(query: String) {
-        if (query.isBlank()) { setStatus("Enter a name or URL to search"); return }
+        if (query.isBlank()) {
+            setStatus("Enter a name or URL to search")
+            return
+        }
         val lower = query.lowercase()
         var found = entryList.filter { it.name.lowercase().contains(lower) }
         if (found.isEmpty()) {
@@ -199,7 +221,10 @@ class MainViewModel : ViewModel() {
 
     fun copyToClipboard(context: Context) {
         val desc = rebuildDescription()
-        if (desc.isEmpty()) { setStatus("No entries to copy"); return }
+        if (desc.isEmpty()) {
+            setStatus("No entries to copy")
+            return
+        }
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("Decal Description", desc)
         clipboard.setPrimaryClip(clip)
@@ -314,11 +339,8 @@ class MainActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { viewModel.setStatus("") }) { 
-                            // We'll use a separate state for dialogs via the ViewModel
-                        }
-                        Button(onClick = { viewModel._uiState.value = viewModel._uiState.value.copy(showAddDialog = true) }) { Text("➕ Add") }
-                        Button(onClick = { viewModel._uiState.value = viewModel._uiState.value.copy(showDeleteQueryDialog = true) }) { Text("🗑️ Delete") }
+                        Button(onClick = { viewModel.showAddDialog(true) }) { Text("➕ Add") }
+                        Button(onClick = { viewModel.showDeleteQueryDialog(true) }) { Text("🗑️ Delete") }
                         Button(onClick = { viewModel.copyToClipboard(context) }, enabled = uiState.entries.isNotEmpty()) {
                             Text("📋 Copy")
                         }
@@ -334,7 +356,7 @@ class MainActivity : ComponentActivity() {
                     var addUrl by remember { mutableStateOf("") }
                     var addDesc by remember { mutableStateOf("") }
                     AlertDialog(
-                        onDismissRequest = { viewModel._uiState.value = viewModel._uiState.value.copy(showAddDialog = false) },
+                        onDismissRequest = { viewModel.showAddDialog(false) },
                         title = { Text("Add Entry") },
                         text = {
                             Column {
@@ -373,7 +395,7 @@ class MainActivity : ComponentActivity() {
                             Button(onClick = { viewModel.addEntry(addName, addUrl, addDesc) }) { Text("Add") }
                         },
                         dismissButton = {
-                            Button(onClick = { viewModel._uiState.value = viewModel._uiState.value.copy(showAddDialog = false) }) { Text("Cancel") }
+                            Button(onClick = { viewModel.showAddDialog(false) }) { Text("Cancel") }
                         }
                     )
                 }
@@ -382,7 +404,7 @@ class MainActivity : ComponentActivity() {
                 if (uiState.showDeleteQueryDialog) {
                     var deleteQuery by remember { mutableStateOf("") }
                     AlertDialog(
-                        onDismissRequest = { viewModel._uiState.value = viewModel._uiState.value.copy(showDeleteQueryDialog = false) },
+                        onDismissRequest = { viewModel.showDeleteQueryDialog(false) },
                         title = { Text("Enter name or URL to delete") },
                         text = {
                             OutlinedTextField(
@@ -395,7 +417,7 @@ class MainActivity : ComponentActivity() {
                             Button(onClick = { viewModel.findAndShowDelete(deleteQuery) }) { Text("Find") }
                         },
                         dismissButton = {
-                            Button(onClick = { viewModel._uiState.value = viewModel._uiState.value.copy(showDeleteQueryDialog = false) }) { Text("Cancel") }
+                            Button(onClick = { viewModel.showDeleteQueryDialog(false) }) { Text("Cancel") }
                         }
                     )
                 }
@@ -403,7 +425,7 @@ class MainActivity : ComponentActivity() {
                 // Delete Found Dialog (Pagination)
                 if (uiState.showDeleteDialog) {
                     AlertDialog(
-                        onDismissRequest = { viewModel._uiState.value = viewModel._uiState.value.copy(showDeleteDialog = false) },
+                        onDismissRequest = { viewModel.showDeleteDialog(false) },
                         title = { Text("Found ${uiState.deleteFoundList.size} entries") },
                         text = {
                             Column {
@@ -425,7 +447,7 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         dismissButton = {
-                            Button(onClick = { viewModel._uiState.value = viewModel._uiState.value.copy(showDeleteDialog = false) }) { Text("Cancel") }
+                            Button(onClick = { viewModel.showDeleteDialog(false) }) { Text("Cancel") }
                         }
                     )
                 }
