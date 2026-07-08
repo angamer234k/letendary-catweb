@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.yourname.decalmanager">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- package attribute REMOVED – namespace is now in build.gradle -->
 
     <uses-permission android:name="android.permission.INTERNET" />
 
