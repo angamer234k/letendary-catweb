@@ -7,7 +7,7 @@
     <application
         android:allowBackup="true"
         android:label="Decal Manager"
-        android:theme="@style/Theme.AppCompat.Light">
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
             android:name=".MainActivity"
             android:exported="true">
