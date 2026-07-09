@@ -292,9 +292,11 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(Unit) {
                     val prefs = context.dataStore
-                    val savedId = prefs.edit { it[DECAL_ID_KEY] }.firstOrNull() ?: ""
-                    if (savedId.isNotEmpty()) {
-                        viewModel.updateAssetIdInput(savedId)
+                    val savedId = prefs.data.collect { preferences ->
+                        val id = preferences[DECAL_ID_KEY] ?: ""
+                        if (id.isNotEmpty()) {
+                            viewModel.updateAssetIdInput(id)
+                        }
                     }
                 }
 
